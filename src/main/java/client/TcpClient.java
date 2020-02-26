@@ -1,12 +1,17 @@
 package client;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import io.ConsoleToSocketWriter;
+import io.SocketToConsoleWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.net.Socket;
-import java.util.Scanner;
 
 public class TcpClient {
+    private static final int SERVER_PORT = 8081;
+    private static final String SERVER_HOST = "localhost";
+    private static final Logger logger = LoggerFactory.getLogger(TcpClient.class);
 
     public static void main(String[] args) {
         runClient();
@@ -14,44 +19,20 @@ public class TcpClient {
 
     public static void runClient() {
         try {
-            Socket socket = new Socket("localhost", 8081);
+            final Socket socket = new Socket(SERVER_HOST, SERVER_PORT);
 
-            CustomThread customThread = new CustomThread(socket);
-            customThread.setName("TcpClientThread-1");
-            customThread.start();
+            final ConsoleToSocketWriter consoleToSocketWriter = new ConsoleToSocketWriter(socket);
+            consoleToSocketWriter.setName("ClientThread");
+            consoleToSocketWriter.start();
+            logger.info("The ClientThread has been started");
 
-            while (true) {
+            final SocketToConsoleWriter socketToConsoleWriter = new SocketToConsoleWriter(socket);
+            socketToConsoleWriter.write();
 
-                final DataInputStream inputStream = new DataInputStream(socket.getInputStream());
-                final String dataFromServer = inputStream.readUTF();
-                System.out.println(dataFromServer);
-            }
+            socket.close();
+            logger.info("Client Socket was closed");
         } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public static final class CustomThread extends Thread {
-        private final Socket socket;
-
-        public CustomThread(Socket socket) {
-            this.socket = socket;
-        }
-
-        @Override
-        public void run() {
-            try {
-                final Scanner scanner = new Scanner(System.in);
-                while (scanner.hasNext()) {
-                    String text = scanner.nextLine();
-
-                    DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
-                    outputStream.writeUTF(text);
-                    outputStream.flush();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            logger.error("I/O exception during creating the Socket");
         }
     }
 }
